@@ -1,0 +1,316 @@
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+    volumes:
+      - ./protos:/app/protos
+      - ./api-gateway:/app
+      - /app/node_modules
+    depends_on:
+      products-service:
+        condition: service_healthy
+      users-service:
+        condition: service_healthy
+      orders-service:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - microservices-network
+
+  products-service:
+    build:
+      context: ./products-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      KAFKA_BROKER: kafka:29092
+      KAFKAJS_NO_PARTITIONER_WARNING: 1
+      PORT: 3001
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/products?authSource=admin
+      KAFKA_CLIENT_ID: products-service
+      KAFKA_GROUP_ID: products-group
+      KAFKA_TOPIC_PRODUCT_CREATED: product-created
+      KAFKA_TOPIC_PRODUCT_UPDATED: product-updated
+      KAFKA_TOPIC_PRODUCT_DELETED: product-deleted
+    volumes:
+      - ./protos:/app/protos
+      - ./products-service:/app
+      - /app/node_modules
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - microservices-network
+
+  users-service:
+    build:
+      context: ./users-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      KAFKA_BROKER: kafka:29092
+      PORT: 3002
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/users?authSource=admin
+    volumes:
+      - ./protos:/app/protos
+      - ./users-service:/app
+      - /app/node_modules
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - microservices-network
+
+  orders-service:
+    build:
+      context: ./orders-service
+      dockerfile: Dockerfile
+    ports:
+      - "3006:3006"
+    environment:
+      KAFKA_BROKER: kafka:29092
+      PORT: 3006
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/orders?authSource=admin
+    volumes:
+      - ./protos:/app/protos
+      - ./orders-service:/app
+      - /app/node_modules
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - microservices-network
+
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    ports:
+      - "3007:3007"
+      - "50052:50052"
+    environment:
+      KAFKA_BROKER: kafka:29092
+      KAFKAJS_NO_PARTITIONER_WARNING: 1
+      PORT: 3007
+      GRPC_PORT: 50052
+      KAFKA_CLIENT_ID: payment-service
+      KAFKA_GROUP_ID: payment-group
+      KAFKA_TOPIC_PAYMENT_PROCESSED: payment-processed
+      KAFKA_TOPIC_PAYMENT_FAILED: payment-failed
+    volumes:
+      - ./protos:/app/protos
+      - ./payment-service:/app
+      - /app/node_modules
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - microservices-network
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    ports:
+      - "3008:3008"
+      - "50053:50053"
+    environment:
+      KAFKA_BROKER: kafka:29092
+      PORT: 3008
+    volumes:
+      - ./protos:/app/protos
+      - ./inventory-service:/app
+      - /app/node_modules
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - microservices-network
+
+  analytics-service:
+    build:
+      context: ./analytics-service
+      dockerfile: Dockerfile
+    ports:
+      - "3010:3010"
+    environment:
+      KAFKA_BROKER: kafka:29092
+      PORT: 3010
+    volumes:
+      - ./protos:/app/protos
+      - ./analytics-service:/app
+      - /app/node_modules
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - microservices-network
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "3011:3011"
+    environment:
+      KAFKA_BROKER: kafka:29092
+      KAFKAJS_NO_PARTITIONER_WARNING: 1
+      PORT: 3011
+      KAFKA_CLIENT_ID: notification-service
+      KAFKA_GROUP_ID: notification-group
+    volumes:
+      - ./protos:/app/protos
+      - ./notification-service:/app
+      - /app/node_modules
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - microservices-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - microservices-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9991
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_SASL_ENABLED_MECHANISMS: ''  # Désactive SASL
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'  # Pour le développement uniquement
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:29092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - microservices-network
+
+  mongodb:
+    image: mongo:5.0.14
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: ecommerce
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    networks:
+      - microservices-network
+
+networks:
+  microservices-network:
+    name: microservices-network
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+
+volumes:
+  mongo-data:

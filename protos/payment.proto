@@ -1,0 +1,34 @@
+syntax = "proto3";
+package payment;
+
+service PaymentService {
+  rpc ProcessPayment(ProcessPaymentRequest) returns (PaymentResponse);
+  rpc RefundPayment(RefundRequest) returns (RefundResponse);
+}
+
+message ProcessPaymentRequest {
+  string userId = 1;
+  double amount = 2;
+  string orderId = 3;
+  string cardNumber = 4;
+  string cardExpiry = 5;
+  string cvv = 6;
+}
+
+message PaymentResponse {
+  bool success = 1;
+  string transactionId = 2;
+  string message = 3;
+}
+
+message RefundRequest {
+  string transactionId = 1;
+  double amount = 2;
+  string reason = 3;
+}
+
+message RefundResponse {
+  bool success = 1;
+  string refundId = 2;
+  string message = 3;
+}
