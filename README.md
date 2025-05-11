@@ -4,15 +4,17 @@
 
 **Une plateforme e-commerce hautement scalable** construite avec une architecture microservices moderne, permettant une évolution indépendante des composants et une résilience accrue.
 
-## 🌟 Fonctionnalités Principales
+##  Fonctionnalités Principales
 
-- ✅ Architecture 100% microservices avec isolation des données
-- ✅ Multi-protocols (REST, GraphQL, gRPC) selon les besoins
-- ✅ Communication asynchrone via Kafka
+-  Architecture 100% microservices avec isolation des données
+-  Multi-protocols (REST, GraphQL, gRPC) selon les besoins
+-  Communication asynchrone via Kafka
 
-## 🏗 Architecture du Système
+## Architecture du Système
 
-### Diagramme d'Architecture Global
+##  Vue d'Ensemble de l'Architecture
+
+Cette architecture microservices repose sur une API Gateway (port 3000) qui achemine les requêtes vers les services principaux : Products (3001, GraphQL), Users (3002, REST), Orders (3006, gRPC/REST) et Payments (3007, gRPC). Les services communiquent de manière synchrone via gRPC pour les opérations critiques et de manière asynchrone via Kafka pour les événements métier. Les services événementiels (Notifications, Analytics) consomment ces événements pour des traitements en arrière-plan. Toutes les données sont persistées dans MongoDB, assurant ainsi une séparation claire des responsabilités et une évolutivité optimale.
 
 ```mermaid
 flowchart TD
@@ -86,7 +88,42 @@ flowchart TD
     linkStyle default stroke:#ffffff,stroke-width:1px,color:white;
 ```
 
-### 🔄 Flux Typique de Commande
+###  Flux Typique de Commande
+Ce diagramme illustre le flux complet de traitement d'une commande dans l'architecture microservices, combinant des appels synchrones (REST/gRPC) et une communication asynchrone via Kafka.
+
+### Étapes du Flux
+
+1. **Soumission de la Commande**
+   - Le client envoie une requête REST `POST /orders` à l'API Gateway
+   - L'API Gateway achemine la demande vers le service Orders via gRPC
+
+2. **Vérification du Stock**
+   - Le service Orders contacte le service Inventory en gRPC pour vérifier la disponibilité
+   - Inventory répond avec le statut du stock
+
+3. **Traitement du Paiement**
+   - Si le stock est disponible, Orders appelle le service Payment via REST
+   - Payment traite la transaction et confirme le paiement
+
+4. **Propagation des Événements**
+   - Une fois la commande validée, Orders publie un événement `OrderCreatedEvent` sur Kafka
+   - Le service Inventory consomme l'événement pour mettre à jour les niveaux de stock
+   - Le service Analytics enregistre la transaction pour reporting
+
+5. **Réponse au Client**
+   - L'API Gateway renvoie une réponse 201 Created au client
+   - Les traitements asynchrones continuent en arrière-plan
+
+### Points Clés
+- **Synchronisation** : Communication synchrone pour les opérations critiques (vérification stock, paiement)
+- **Découplage** : Utilisation de Kafka pour découpler les services et assurer la résilience
+- **Cohérence** : Mise à jour asynchrone des différents systèmes tout en maintenant une expérience utilisateur réactive
+- **Évolutivité** : Chaque service peut évoluer indépendamment
+
+### Technologies Utilisées
+- **gRPC** : Pour les communications inter-services nécessitant des performances élevées
+- **REST** : Pour les APIs exposées aux clients
+- **Kafka** : Pour la propagation asynchrone des événements métier
 ```mermaid
 sequenceDiagram
     participant Client
@@ -108,7 +145,7 @@ sequenceDiagram
     Gateway-->>Client: 201 Created
 ```
 
-## 🛠 Stack Technique Complète
+## Stack Technique Complète
 
 🛠 Stack Technique Complète
 📚 Langages & Frameworks
@@ -116,19 +153,19 @@ sequenceDiagram
 🗃 Bases de Données & Infrastructure
 <div style="display: flex; flex-wrap: wrap; gap: 10px;"> <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"> <img src="https://img.shields.io/badge/Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white" alt="Kafka"> </div>
 
-## 📡 Matrice des Services
+##  Matrice des Services
 
 | Service               | Port  | Protocol | Base de Données | Dependencies           | Endpoints Clés                     |
 |-----------------------|-------|----------|-----------------|------------------------|------------------------------------|
-| 🚪 API Gateway        | 3000  | REST     | -               | Users, Products        | `POST /auth`, `GET /products`      |
-| 📦 Products Service   | 3001  | GraphQL  | MongoDB         | -                      | `query { products }`               |
-| 👥 Users Service      | 3002  | REST     | MongoDB         | -                      | `POST /users`, `GET /users/{id}`   |
-| 🛒 Orders Service     | 3006  | gRPC     | MongoDB         | Payment, Inventory      | `CreateOrder`, `GetOrderStatus`    |
-| 💳 Payment Service    | 3007  | gRPC     | MongoDB         | -                      | `ProcessPayment`, `GetPayment`     |
-| 📦 Inventory Service  | 3008  | gRPC     | MongoDB         | -                      | `CheckStock`, `UpdateInventory`    |
-| 🔔 Notification Svc   | 3009  | Kafka    | -               | -                      | `order_created`, `payment_processed` |
-| 📊 Analytics Service  | 3010  | REST     | MongoDB         | Kafka                  | `GET /metrics`, `POST /events`     |
-## 🚀 Démarrage Rapide
+|  API Gateway        | 3000  | REST     | -               | Users, Products        | `POST /auth`, `GET /products`      |
+|  Products Service   | 3001  | GraphQL  | MongoDB         | -                      | `query { products }`               |
+|  Users Service      | 3002  | REST     | MongoDB         | -                      | `POST /users`, `GET /users/{id}`   |
+|  Orders Service     | 3006  | gRPC     | MongoDB         | Payment, Inventory      | `CreateOrder`, `GetOrderStatus`    |
+|  Payment Service    | 3007  | gRPC     | MongoDB         | -                      | `ProcessPayment`, `GetPayment`     |
+|  Inventory Service  | 3008  | gRPC     | MongoDB         | -                      | `CheckStock`, `UpdateInventory`    |
+|  Notification Svc   | 3009  | Kafka    | -               | -                      | `order_created`, `payment_processed` |
+|  Analytics Service  | 3010  | REST     | MongoDB         | Kafka                  | `GET /metrics`, `POST /events`     |
+##  Démarrage Rapide
 
 ### Explication des Protocoles
 
@@ -199,7 +236,7 @@ sequenceDiagram
 - **Docker Compose** for container orchestration
 - **Zookeeper** for distributed service coordination
 
-## 🚀 Services
+## Services
 
 ### Services Principaux
 - **Products Service** (`3001`) - Gestion des produits et du catalogue
@@ -214,13 +251,13 @@ sequenceDiagram
 - **MongoDB** - Base de données principale
 - **Zookeeper** - Coordination des services distribués
 
-## 🛠 Prérequis
+##  Prérequis
 
 - Docker et Docker Compose
 - Node.js 16+
 - npm ou yarn
 
-## 🚀 Démarrage Rapide
+## Démarrage Rapide
 
 1. **Cloner le dépôt**
    ```bash
@@ -238,7 +275,7 @@ sequenceDiagram
    docker-compose ps
    ```
 
-## 📡 Points de Terminaison
+##  Points de Terminaison
 
 ### REST API
 * **Produits**: `http://localhost:3001/api/products`
